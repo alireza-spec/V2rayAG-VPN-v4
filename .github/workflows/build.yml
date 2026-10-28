@@ -38,28 +38,23 @@ jobs:
           sed -i '0,/^android {/s//android {\n    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n    }/' android/app/build.gradle.kts || true
           sed -i '0,/^android {/s//android {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n    }/' android/app/build.gradle || true
           if ! grep -q useLegacyPackaging android/app/build.gradle.kts android/app/build.gradle 2>/dev/null; then sed -i 's#<application#<application android:extractNativeLibs="true"#' android/app/src/main/AndroidManifest.xml; fi
+          
+          # --- بخش اصلاح شده برای Psiphon ---
+          # اضافه کردن مخزن به settings.gradle.kts
+          sed -i '/mavenCentral()/a \        maven { url = uri("https://raw.github.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/master") }' android/settings.gradle.kts 2>/dev/null || true
+          sed -i "/mavenCentral()/a \\        maven { url 'https://raw.github.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/master' }" android/settings.gradle 2>/dev/null || true
+
+          # اضافه کردن وابستگی به build.gradle.kts (داخل بلوک dependencies)
+          sed -i '/^dependencies {/a \    implementation("ca.psiphon:psiphontunnel:2.0.41")' android/app/build.gradle.kts 2>/dev/null || true
+          sed -i "/^dependencies {/a \\    implementation 'ca.psiphon:psiphontunnel:2.0.41'" android/app/build.gradle 2>/dev/null || true
+          # -----------------------------------
+          
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/' android/app/build.gradle.kts android/app/build.gradle 2>/dev/null || true
+          
           echo "--- manifest ---"; grep -n "extractNativeLibs\|uses-permission" android/app/src/main/AndroidManifest.xml
           echo "--- gradle ---"; grep -n "useLegacyPackaging\|minSdk\|targetSdk\|compileSdk" android/app/build.gradle* || true
-          cat >> android/app/build.gradle.kts <<'GRADLE'
+          echo "--- psiphon dependency ---"; grep -n "psiphontunnel" android/app/build.gradle* android/settings.gradle* || true
           
-          repositories {
-              maven { url = uri("https://raw.github.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/master") }
-          }
-          dependencies {
-              implementation("ca.psiphon:psiphontunnel:2.0.41")
-          }
-          GRADLE
-          cat >> android/app/build.gradle <<'GRADLE2' 2>/dev/null || true
-          
-          repositories {
-              maven { url 'https://raw.github.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/master' }
-          }
-          dependencies {
-              implementation 'ca.psiphon:psiphontunnel:2.0.41'
-          }
-          GRADLE2
-          echo "--- psiphon dependency ---"; grep -n "psiphontunnel" android/app/build.gradle* android/settings.gradle.kts || true
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/' android/app/build.gradle.kts android/app/build.gradle 2>/dev/null || true
           flutter pub add flutter_vless
       - name: App icon
         continue-on-error: true
