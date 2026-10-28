@@ -40,15 +40,20 @@ jobs:
           if ! grep -q useLegacyPackaging android/app/build.gradle.kts android/app/build.gradle 2>/dev/null; then sed -i 's#<application#<application android:extractNativeLibs="true"#' android/app/src/main/AndroidManifest.xml; fi
           echo "--- manifest ---"; grep -n "extractNativeLibs\|uses-permission" android/app/src/main/AndroidManifest.xml
           echo "--- gradle ---"; grep -n "useLegacyPackaging\|minSdk\|targetSdk\|compileSdk" android/app/build.gradle* || true
-          sed -i '0,/mavenCentral()/s//mavenCentral()\n        maven { url = uri("https:\/\/raw.github.com\/Psiphon-Labs\/psiphon-tunnel-core-Android-library\/master") }/' android/settings.gradle.kts || true
           cat >> android/app/build.gradle.kts <<'GRADLE'
           
+          repositories {
+              maven { url = uri("https://raw.github.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/master") }
+          }
           dependencies {
               implementation("ca.psiphon:psiphontunnel:2.0.41")
           }
           GRADLE
           cat >> android/app/build.gradle <<'GRADLE2' 2>/dev/null || true
           
+          repositories {
+              maven { url 'https://raw.github.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/master' }
+          }
           dependencies {
               implementation 'ca.psiphon:psiphontunnel:2.0.41'
           }
