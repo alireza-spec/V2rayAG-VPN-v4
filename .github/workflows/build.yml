@@ -54,6 +54,42 @@ jobs:
           flutter pub add flutter_vless
           flutter pub add file_picker
           flutter pub add sing_box
+      - name: Strip duplicate Go classes from Psiphon AAR
+        run: |
+          mkdir -p android/app/libs
+          curl -fL -o psiphontunnel-2.0.41.aar https://raw.github.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/master/ca/psiphon/psiphontunnel/2.0.41/psiphontunnel-2.0.41.aar
+          python3 - <<'PY'
+          import io, zipfile
+          src = 'psiphontunnel-2.0.41.aar'
+          zin = zipfile.ZipFile(src)
+          cj = zin.read('classes.jar')
+          cin = zipfile.ZipFile(io.BytesIO(cj))
+          buf = io.BytesIO()
+          cout = zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED)
+          removed = 0
+          for item in cin.infolist():
+              if item.filename.startswith('go/'):
+                  removed += 1
+                  continue
+              cout.writestr(item, cin.read(item.filename))
+          cout.close()
+          newcj = buf.getvalue()
+          buf2 = io.BytesIO()
+          aout = zipfile.ZipFile(buf2, 'w', zipfile.ZIP_DEFLATED)
+          for item in zin.infolist():
+              data = newcj if item.filename == 'classes.jar' else zin.read(item.filename)
+              aout.writestr(item, data)
+          aout.close()
+          open('android/app/libs/psiphontunnel-2.0.41.aar', 'wb').write(buf2.getvalue())
+          z = zipfile.ZipFile(io.BytesIO(newcj))
+          assert not any(n.startswith('go/') for n in z.namelist()), 'go/ entries remain'
+          print('removed go classes:', removed)
+          assert removed > 0, 'no go classes found to strip'
+          print('verified: no go/ entries left in stripped classes.jar')
+          PY
+          sed -i 's#implementation("ca.psiphon:psiphontunnel:2.0.41")#implementation(files("libs/psiphontunnel-2.0.41.aar"))#' android/app/build.gradle.kts
+          echo "--- psiphon dependency after strip ---"; grep -n "psiphontunnel" android/app/build.gradle.kts || true
+          ls -l android/app/libs/
       - name: App icon
         continue-on-error: true
         run: |
